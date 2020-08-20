@@ -29,7 +29,7 @@ RUN \
     git \
     llvm9 \
     ninja \
-    python \
+    python2 \
     tar \
     xz \
   # Two quick fixes: we need the LLVM tooling in $PATH, and we
@@ -105,7 +105,7 @@ RUN \
     linux-headers \
     make \
     ninja \
-    python \
+    python2 \
     tar \
     xz \
   # Configure our V8 build
