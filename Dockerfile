@@ -32,12 +32,10 @@ RUN \
     python \
     tar \
     xz \
-
   # Two quick fixes: we need the LLVM tooling in $PATH, and we
   # also have to use gold instead of ld.
   && PATH=$PATH:/usr/lib/llvm9/bin \
   && cp -f /usr/bin/ld.gold /usr/bin/ld \
-
   # Clone and build gn
   && git clone https://gn.googlesource.com/gn /tmp/gn \
   && git -C /tmp/gn checkout ${GN_COMMIT} \
@@ -45,7 +43,6 @@ RUN \
   && python build/gen.py \
   && ninja -C out \
   && cp -f /tmp/gn/out/gn /usr/local/bin/gn \
-
   # Remove build dependencies and temporary files
   && apk del .gn-build-dependencies \
   && rm -rf /tmp/* /var/tmp/* /var/cache/apk/*
@@ -71,18 +68,15 @@ RUN \
     git \
     curl \
     python && \
-
   # Clone depot_tools
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools && \
   PATH=$PATH:/tmp/depot_tools && \
-
   # fetch V8
   cd /tmp && \
   fetch v8 && \
   cd /tmp/v8 && \
   git checkout ${V8_VERSION} && \
   gclient sync && \
-
   # cleanup
   apt-get remove --purge -y \
     git \
@@ -114,7 +108,6 @@ RUN \
     python \
     tar \
     xz \
-
   # Configure our V8 build
   && cd /tmp/v8 && \
   ./tools/dev/v8gen.py x64.release -- \
@@ -140,10 +133,8 @@ RUN \
     v8_static_library=true \
     v8_experimental_extra_library_files=[] \
     v8_extra_library_files=[] \
-
   # Build V8
   && ninja -C out.gn/x64.release -j $(getconf _NPROCESSORS_ONLN) \
-
   # Brag
   && find /tmp/v8/out.gn/x64.release -name '*.a'
 
