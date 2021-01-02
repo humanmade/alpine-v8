@@ -117,6 +117,10 @@ RUN \
 
   # Configure our V8 build
   RUN ln -s /usr/bin/aarch64-alpine-linux-musl-g++ /usr/bin/aarch64-linux-gnu-g++
+  RUN ln -s /usr/bin/aarch64-alpine-linux-musl-gcc /usr/bin/aarch64-linux-gnu-gcc
+  RUN ln -s /usr/bin/nm /usr/bin/aarch64-linux-gnu-nm
+  RUN ln -s /usr/bin/readelf /usr/bin/aarch64-linux-gnu-readelf
+  RUN ln -s /usr/bin/ar /usr/bin/aarch64-linux-gnu-ar
   RUN cd /tmp/v8 && \
   sed -i -e "s/target_cpu=\"x64\" v8_target_cpu=\"arm64/target_cpu=\"arm64\" v8_target_cpu=\"arm64/"  infra/mb/mb_config.pyl && \
   ./tools/dev/v8gen.py arm64.release -vv -- \
@@ -141,4 +145,28 @@ RUN \
     v8_enable_gdbjit=false \
     v8_static_library=true \
     v8_experimental_extra_library_files=[] \
-    v8_extra_library_files=[]
+    v8_extra_library_files=[] && \
+
+  # Build V8
+  ninja -vv -C out.gn/arm64.release -j $(getconf _NPROCESSORS_ONLN) \
+  # Brag
+  && find /tmp/v8/out.gn/arm64.release -name '*.a'
+
+#
+# STEP 4
+# Export libv8 to /v8
+#
+
+RUN mkdir /v8
+RUN mkdir /v8/lib
+RUN cp -R /tmp/v8/include /v8/include
+RUN ls -la /tmp/v8/out.gn/arm64.release
+RUN cp /tmp/v8/out.gn/arm64.release/d8 /v8/lib/
+#RUN cp /tmp/v8/out.gn/arm64.release/libchrome_zlib.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8_libbase.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8_libplatform.so /v8/lib/
+RUN strip --strip-debug --strip-unneeded /v8/lib/*.so
+RUN ls /v8
+
+RUN echo done
