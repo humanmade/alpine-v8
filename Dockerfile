@@ -12,7 +12,7 @@
 # STEP 1
 # Build GN for alpine
 #
-FROM alpine:latest as gn-builder
+FROM alpine:3.11 as gn-builder
 
 # This is the GN commit that we want to build. Most commits will probably build just fine but
 # this happened to be the latest commit when I did this.
@@ -58,11 +58,11 @@ RUN \
 # bother figuring out). Fortunately we only need it to actually download the source and its dependencies
 # so we can do this in a place with glibc, and then pass the results on to an alpine builder.
 #
-FROM debian:9 as source
+FROM debian:10 as source
 
 # The V8 version we want to use. It's assumed that this will be a version tag, but it's just
 # used as "git commit $V8_VERSION" so anything that git can resolve will work.
-ARG V8_VERSION=8.0.426.27
+ARG V8_VERSION=7.5.288.23
 
 RUN \
   set -x && \
@@ -95,7 +95,7 @@ RUN \
 # STEP 3
 # Build V8 for alpine
 #
-FROM alpine:latest as v8
+FROM alpine:3.11 as v8
 
 COPY --from=source /tmp/v8 /tmp/v8
 COPY --from=gn-builder /usr/local/bin/gn /tmp/v8/buildtools/linux64/gn
@@ -113,15 +113,21 @@ RUN \
     ninja \
     python \
     tar \
-    xz \
+    xz
 
   # Configure our V8 build
-  && cd /tmp/v8 && \
-  ./tools/dev/v8gen.py x64.release -- \
+  RUN ln -s /usr/bin/aarch64-alpine-linux-musl-g++ /usr/bin/aarch64-linux-gnu-g++
+  RUN ln -s /usr/bin/aarch64-alpine-linux-musl-gcc /usr/bin/aarch64-linux-gnu-gcc
+  RUN ln -s /usr/bin/nm /usr/bin/aarch64-linux-gnu-nm
+  RUN ln -s /usr/bin/readelf /usr/bin/aarch64-linux-gnu-readelf
+  RUN ln -s /usr/bin/ar /usr/bin/aarch64-linux-gnu-ar
+  RUN cd /tmp/v8 && \
+  sed -i -e "s/target_cpu=\"x64\" v8_target_cpu=\"arm64/target_cpu=\"arm64\" v8_target_cpu=\"arm64/"  infra/mb/mb_config.pyl && \
+  ./tools/dev/v8gen.py arm64.release -vv -- \
     binutils_path=\"/usr/bin\" \
     target_os=\"linux\" \
-    target_cpu=\"x64\" \
-    v8_target_cpu=\"x64\" \
+    target_cpu=\"arm64\" \
+    v8_target_cpu=\"arm64\" \
     v8_enable_future=true \
     is_official_build=true \
     is_component_build=true \
@@ -139,13 +145,12 @@ RUN \
     v8_enable_gdbjit=false \
     v8_static_library=true \
     v8_experimental_extra_library_files=[] \
-    v8_extra_library_files=[] \
+    v8_extra_library_files=[] && \
 
   # Build V8
-  && ninja -C out.gn/x64.release -j $(getconf _NPROCESSORS_ONLN) \
-
+  ninja -vv -C out.gn/arm64.release -j $(getconf _NPROCESSORS_ONLN) \
   # Brag
-  && find /tmp/v8/out.gn/x64.release -name '*.a'
+  && find /tmp/v8/out.gn/arm64.release -name '*.a'
 
 #
 # STEP 4
@@ -155,11 +160,12 @@ RUN \
 RUN mkdir /v8
 RUN mkdir /v8/lib
 RUN cp -R /tmp/v8/include /v8/include
-RUN cp /tmp/v8/out.gn/x64.release/d8 /v8/lib/
-RUN cp /tmp/v8/out.gn/x64.release/libchrome_zlib.so /v8/lib/
-RUN cp /tmp/v8/out.gn/x64.release/libv8.so /v8/lib/
-RUN cp /tmp/v8/out.gn/x64.release/libv8_libbase.so /v8/lib/
-RUN cp /tmp/v8/out.gn/x64.release/libv8_libplatform.so /v8/lib/
+RUN ls -la /tmp/v8/out.gn/arm64.release
+RUN cp /tmp/v8/out.gn/arm64.release/d8 /v8/lib/
+#RUN cp /tmp/v8/out.gn/arm64.release/libchrome_zlib.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8_libbase.so /v8/lib/
+RUN cp /tmp/v8/out.gn/arm64.release/libv8_libplatform.so /v8/lib/
 RUN strip --strip-debug --strip-unneeded /v8/lib/*.so
 RUN ls /v8
 
